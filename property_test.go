@@ -1,4 +1,4 @@
-package main
+package proprdr
 
 import "testing"
 
@@ -24,7 +24,7 @@ func TestGet(t *testing.T) {
 		t.Errorf("Error creando nuevo PropertyFile")
 	}
 
-	property := propertyFile.Get("app.name")
+	property, _ := propertyFile.Get("app.name")
 	if property != "Lector de Propiedades" {
 		t.Errorf("Error en lectura de PropertyFile. Se esperaba 'Lector de Propiedades' y se encontro '%s'", property)
 	}
@@ -43,5 +43,39 @@ func TestGetAsInt(t *testing.T) {
 
 	if intValue < 20 {
 		t.Errorf("Se esperaba un entero mayor o igual 20 y se obtuvo %d", intValue)
+	}
+}
+
+func TestGetAsFloat(t *testing.T) {
+	propertyFile, err := New(fileName)
+	if err != nil {
+		t.Errorf("Error creando nuevo PropertyFile")
+	}
+
+	floatValue, err := propertyFile.GetAsFloat("app.amount", 64)
+	if err != nil {
+		t.Errorf("An error has occurred... %s", err.Error())
+	}
+
+	const expected = 30.456
+	if floatValue != expected {
+		t.Errorf("Expected %f but obtained %f", expected, floatValue)
+	}
+}
+
+func TestContains(t *testing.T) {
+	propertyFile, err := New(fileName)
+	if err != nil {
+		t.Errorf("Error creando nuevo PropertyFile")
+	}
+
+	expected := false
+	if exist := propertyFile.Contains("undefinedKey"); exist != expected {
+		t.Errorf("Expected %t but obtained %t", expected, exist)
+	}
+
+	expected = true
+	if exist := propertyFile.Contains("app.values.maxConnections"); exist != expected {
+		t.Errorf("Expected %t but obtained %t", expected, exist)
 	}
 }
