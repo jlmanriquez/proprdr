@@ -2,8 +2,10 @@ package proprdr
 
 import (
 	"errors"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // PropertyFile interface for read property file
@@ -22,10 +24,13 @@ type PropertyFile interface {
 	Contains(property string) (exist bool)
 	// Size returns the number of properties
 	Size() int
+	// HasChanged verifies if the file has changed after its creation
+	HasChanged() (bool, error)
 }
 
 type propFile struct {
 	fileName   string
+	created    time.Time
 	properties map[string]string
 }
 
@@ -36,7 +41,7 @@ func New(fileName string) (PropertyFile, error) {
 		return nil, err
 	}
 
-	return &propFile{fileName: fileName, properties: dictionary}, nil
+	return &propFile{fileName: fileName, properties: dictionary, created: time.Now()}, nil
 }
 
 func (p *propFile) Get(property string) (string, error) {
@@ -104,4 +109,53 @@ func (p *propFile) GetAll(startWith string) map[string]string {
 	}
 
 	return result
+}
+
+func (p *propFile) HasChanged() (bool, error) {
+	info, err := os.Lstat(p.fileName)
+	if err != nil {
+		return false, err
+	}
+
+	modTime := info.ModTime()
+	if modTime.After(p.created) {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (p *propFile) Refresh() error {
+	pfile, err := New(p.fileName)
+	if err != nil {
+		return err
+	}
+
+	p = pfile.(*propFile)
+	return nil
+}
+
+func (p *propFile) UGet(property string) (string, error) {
+	_, exist := p.properties[property]
+	if !exist {
+		return "", errors.New("Property not found")
+	}
+
+	value, err := findLine(p.fileName, property)
+	if err != nil {
+		value, gErr := p.Get(property)
+		if gErr != nil {
+			return "", err
+		}
+
+		// it was not possible to obtain the updated value
+		// returns the current value loaded in memory, but
+		// reporting error
+		return value, err
+	}
+
+	// updates old property value
+	p.properties[property] = value
+
+	return value, nil
 }

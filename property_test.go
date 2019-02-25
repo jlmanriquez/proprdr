@@ -1,10 +1,34 @@
 package proprdr
 
-import "testing"
+import (
+	"fmt"
+	"log"
+	"os"
+	"testing"
+	"time"
+)
 
 const (
 	fileName = "./config.properties"
 )
+
+func changeFile(key, newValue string) {
+	info, err := os.Lstat(fileName)
+	if err != nil {
+		log.Fatalf("Can not get FileMode for file %s... %s", fileName, err.Error())
+	}
+
+	file, err := os.OpenFile(fileName, os.O_APPEND, info.Mode())
+	if err != nil {
+		log.Fatalf("Can not open file %s for update... %s", fileName, err.Error())
+	}
+	defer file.Close()
+
+	newLine := fmt.Sprintf("\n%s=%s\n", key, newValue)
+	if _, err := file.Write([]byte(newLine)); err != nil {
+		log.Fatal(err)
+	}
+}
 
 func TestNew(t *testing.T) {
 	propertyFile, err := New(fileName)
@@ -131,5 +155,24 @@ func TestGetAll(t *testing.T) {
 	}
 	if value != urlConnProperty {
 		t.Errorf("Expected a property value %s. Obtained %s", urlConnProperty, value)
+	}
+}
+
+func TestHasChanged(t *testing.T) {
+	propertyFile, err := New(fileName)
+	if err != nil {
+		t.Errorf("PropertyFile creation failed... %s", err.Error())
+	}
+
+	if changed, _ := propertyFile.HasChanged(); changed != false {
+		t.Errorf("Expected a %t. Obtained %t", false, changed)
+	}
+
+	// Wait a little time previous to change a file
+	time.Sleep(100 * time.Millisecond)
+	changeFile("app.newline", "This is a new line")
+
+	if changed, _ := propertyFile.HasChanged(); changed != true {
+		t.Errorf("Expected a %t. Obtained %t", true, changed)
 	}
 }
