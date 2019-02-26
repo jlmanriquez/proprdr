@@ -2,6 +2,7 @@ package proprdr
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"testing"
@@ -9,11 +10,34 @@ import (
 )
 
 const (
-	fileName = "./config.properties"
+	fileName         = "./config.properties"
+	unitTestFileName = "unit_test.properties"
 )
 
+func init() {
+	copyPropertyFile()
+}
+
+func copyPropertyFile() {
+	source, err := os.Open(fileName)
+	if err != nil {
+		log.Fatalf("Can not open file %s to copy... Error %s", fileName, err.Error())
+	}
+	defer source.Close()
+
+	destination, err := os.Create(unitTestFileName)
+	if err != nil {
+		log.Fatalf("Can not create a new file %s... Error %s", unitTestFileName, err.Error())
+	}
+	defer destination.Close()
+
+	if _, err := io.Copy(destination, source); err != nil {
+		log.Fatalf("Can not possible copy file %s to %s... Error %s", fileName, unitTestFileName, err.Error())
+	}
+}
+
 func getNewFile() PropertyFile {
-	pFile, err := New(fileName)
+	pFile, err := New(unitTestFileName)
 	if err != nil {
 		log.Fatalf("PropertyFile creation failed... %s", err.Error())
 	}
@@ -22,32 +46,32 @@ func getNewFile() PropertyFile {
 }
 
 func changeFile(key, newValue string) {
-	info, err := os.Lstat(fileName)
+	info, err := os.Lstat(unitTestFileName)
 	if err != nil {
-		log.Fatalf("Can not get FileMode for file %s... %s", fileName, err.Error())
+		log.Fatalf("Can not get FileMode for file %s... %s", unitTestFileName, err.Error())
 	}
 
-	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY, info.Mode())
+	file, err := os.OpenFile(unitTestFileName, os.O_APPEND|os.O_WRONLY, info.Mode())
 	if err != nil {
-		log.Fatalf("Can not open file %s for update... %s", fileName, err.Error())
+		log.Fatalf("Can not open file %s for update... %s", unitTestFileName, err.Error())
 	}
 	defer file.Close()
 
-	newLine := fmt.Sprintf("\n%s=%s\n", key, newValue)
+	newLine := fmt.Sprintf("%s=%s\n", key, newValue)
 	if _, err := file.Write([]byte(newLine)); err != nil {
 		log.Fatal(err)
 	}
 }
 
 func TestNew(t *testing.T) {
-	propertyFile, err := New(fileName)
+	pFile, err := New(unitTestFileName)
 	if err != nil {
 		t.Errorf("A new PropertyFile expected. Obtained error... %s", err.Error())
 	}
 
 	const expected = 6
-	if propertyFile.Size() != expected {
-		t.Errorf("Expected a size of %d elements. Obtained %d", expected, propertyFile.Size())
+	if pFile.Size() != expected {
+		t.Errorf("Expected a size of %d elements. Obtained %d", expected, pFile.Size())
 	}
 }
 
