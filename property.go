@@ -32,10 +32,10 @@ type PropertyFile interface {
 	UGet(property string) (string, error)
 }
 
-type propFile struct {
-	fileName   string
-	created    time.Time
-	properties map[string]string
+type properties struct {
+	fileName  string
+	created   time.Time
+	keyValues map[string]string
 }
 
 // New return a implementation of PropertyFile
@@ -45,18 +45,18 @@ func New(fileName string) (PropertyFile, error) {
 		return nil, err
 	}
 
-	return &propFile{fileName: fileName, properties: dictionary, created: time.Now()}, nil
+	return &properties{fileName: fileName, keyValues: dictionary, created: time.Now()}, nil
 }
 
-func (p *propFile) Get(property string) (string, error) {
-	value, exist := p.properties[property]
+func (p *properties) Get(property string) (string, error) {
+	value, exist := p.keyValues[property]
 	if !exist {
 		return "", errors.New("Property not found")
 	}
 	return value, nil
 }
 
-func (p *propFile) GetAsInt(property string) (int, error) {
+func (p *properties) GetAsInt(property string) (int, error) {
 	strValue, err := p.Get(property)
 	if err != nil {
 		return 0, err
@@ -69,7 +69,7 @@ func (p *propFile) GetAsInt(property string) (int, error) {
 	return value, nil
 }
 
-func (p *propFile) GetAsFloat(property string, bitSize int) (float64, error) {
+func (p *properties) GetAsFloat(property string, bitSize int) (float64, error) {
 	strValue, err := p.Get(property)
 	if err != nil {
 		return 0.00, err
@@ -83,16 +83,16 @@ func (p *propFile) GetAsFloat(property string, bitSize int) (float64, error) {
 	return value, nil
 }
 
-func (p *propFile) Size() int {
-	return len(p.properties)
+func (p *properties) Size() int {
+	return len(p.keyValues)
 }
 
-func (p *propFile) Contains(property string) (exist bool) {
-	_, exist = p.properties[property]
+func (p *properties) Contains(property string) (exist bool) {
+	_, exist = p.keyValues[property]
 	return
 }
 
-func (p *propFile) GetAsBool(property string) bool {
+func (p *properties) GetAsBool(property string) bool {
 	value, _ := p.Get(property)
 
 	boolValue, err := strconv.ParseBool(value)
@@ -103,10 +103,10 @@ func (p *propFile) GetAsBool(property string) bool {
 	return boolValue
 }
 
-func (p *propFile) GetAll(startWith string) map[string]string {
+func (p *properties) GetAll(startWith string) map[string]string {
 	result := map[string]string{}
 
-	for key, value := range p.properties {
+	for key, value := range p.keyValues {
 		if strings.HasPrefix(key, startWith) {
 			result[key] = value
 		}
@@ -115,7 +115,7 @@ func (p *propFile) GetAll(startWith string) map[string]string {
 	return result
 }
 
-func (p *propFile) HasChanged() (bool, error) {
+func (p *properties) HasChanged() (bool, error) {
 	info, err := os.Lstat(p.fileName)
 	if err != nil {
 		return false, err
@@ -129,21 +129,21 @@ func (p *propFile) HasChanged() (bool, error) {
 	return false, nil
 }
 
-func (p *propFile) Refresh() error {
+func (p *properties) Refresh() error {
 	pfile, err := New(p.fileName)
 	if err != nil {
 		return err
 	}
 
-	newPropFile := pfile.(*propFile)
+	newProperties := pfile.(*properties)
 
-	p.created = newPropFile.created
-	p.properties = newPropFile.properties
+	p.created = newProperties.created
+	p.keyValues = newProperties.keyValues
 	return nil
 }
 
-func (p *propFile) UGet(property string) (string, error) {
-	_, exist := p.properties[property]
+func (p *properties) UGet(property string) (string, error) {
+	_, exist := p.keyValues[property]
 	if !exist {
 		return "", errors.New("Property not found")
 	}
@@ -162,7 +162,7 @@ func (p *propFile) UGet(property string) (string, error) {
 	}
 
 	// updates old property value
-	p.properties[property] = value
+	p.keyValues[property] = value
 
 	return value, nil
 }
