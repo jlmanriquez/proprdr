@@ -10,7 +10,7 @@ import (
 
 // PropertyFile interface for read property file
 type PropertyFile interface {
-	// Get return a string value
+	// Get return a string value. If property does not exist, return a errors
 	Get(property string) (string, error)
 	// GetAsInt convert string value to int
 	GetAsInt(property string) (int, error)
@@ -26,6 +26,10 @@ type PropertyFile interface {
 	Size() int
 	// HasChanged verifies if the file has changed after its creation
 	HasChanged() (bool, error)
+	// Refresh reread the property file and replace it in memory
+	Refresh() error
+	// UGet reread the property file to get the property and update it in memory
+	UGet(property string) (string, error)
 }
 
 type propFile struct {
@@ -131,7 +135,10 @@ func (p *propFile) Refresh() error {
 		return err
 	}
 
-	p = pfile.(*propFile)
+	newPropFile := pfile.(*propFile)
+
+	p.created = newPropFile.created
+	p.properties = newPropFile.properties
 	return nil
 }
 

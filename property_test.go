@@ -12,13 +12,22 @@ const (
 	fileName = "./config.properties"
 )
 
+func getNewFile() PropertyFile {
+	pFile, err := New(fileName)
+	if err != nil {
+		log.Fatalf("PropertyFile creation failed... %s", err.Error())
+	}
+
+	return pFile
+}
+
 func changeFile(key, newValue string) {
 	info, err := os.Lstat(fileName)
 	if err != nil {
 		log.Fatalf("Can not get FileMode for file %s... %s", fileName, err.Error())
 	}
 
-	file, err := os.OpenFile(fileName, os.O_APPEND, info.Mode())
+	file, err := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY, info.Mode())
 	if err != nil {
 		log.Fatalf("Can not open file %s for update... %s", fileName, err.Error())
 	}
@@ -43,24 +52,18 @@ func TestNew(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	propertyFile, err := New(fileName)
-	if err != nil {
-		t.Errorf("PropertyFile creation failed... %s", err.Error())
-	}
+	pFile := getNewFile()
 
 	expectedValue := "Property File Reader"
-	if property, _ := propertyFile.Get("app.name"); property != expectedValue {
+	if property, _ := pFile.Get("app.name"); property != expectedValue {
 		t.Errorf("Expected %s. Obtained %s", expectedValue, property)
 	}
 }
 
 func TestGetAsInt(t *testing.T) {
-	propertyFile, err := New(fileName)
-	if err != nil {
-		t.Errorf("PropertyFile creation failed... %s", err.Error())
-	}
+	pFile := getNewFile()
 
-	intValue, err := propertyFile.GetAsInt("app.values.maxConnections")
+	intValue, err := pFile.GetAsInt("app.values.maxConnections")
 	if err != nil {
 		t.Errorf("Expected a int value. Obtained error... %s", err.Error())
 	}
@@ -72,12 +75,9 @@ func TestGetAsInt(t *testing.T) {
 }
 
 func TestGetAsFloat(t *testing.T) {
-	propertyFile, err := New(fileName)
-	if err != nil {
-		t.Errorf("PropertyFile creation failed... %s", err.Error())
-	}
+	pFile := getNewFile()
 
-	floatValue, err := propertyFile.GetAsFloat("app.amount", 64)
+	floatValue, err := pFile.GetAsFloat("app.amount", 64)
 	if err != nil {
 		t.Errorf("An error has occurred... %s", err.Error())
 	}
@@ -89,47 +89,38 @@ func TestGetAsFloat(t *testing.T) {
 }
 
 func TestContains(t *testing.T) {
-	propertyFile, err := New(fileName)
-	if err != nil {
-		t.Errorf("PropertyFile creation failed... %s", err.Error())
-	}
+	pFile := getNewFile()
 
 	expected := false
-	if exist := propertyFile.Contains("undefinedKey"); exist != expected {
+	if exist := pFile.Contains("undefinedKey"); exist != expected {
 		t.Errorf("Expected %t but obtained %t", expected, exist)
 	}
 
 	expected = true
-	if exist := propertyFile.Contains("app.values.maxConnections"); exist != expected {
+	if exist := pFile.Contains("app.values.maxConnections"); exist != expected {
 		t.Errorf("Expected %t but obtained %t", expected, exist)
 	}
 }
 
 func TestGetAsBool(t *testing.T) {
-	propertyFile, err := New(fileName)
-	if err != nil {
-		t.Errorf("PropertyFile creation failed... %s", err.Error())
-	}
+	pFile := getNewFile()
 
 	expected := true
-	if boolValue := propertyFile.GetAsBool("app.security.active"); expected != boolValue {
+	if boolValue := pFile.GetAsBool("app.security.active"); expected != boolValue {
 		t.Errorf("Expected %t but obtained %t", expected, boolValue)
 	}
 
 	expected = false
-	if boolValue := propertyFile.GetAsBool("app.connections.retries"); expected != boolValue {
+	if boolValue := pFile.GetAsBool("app.connections.retries"); expected != boolValue {
 		t.Errorf("Expected %t but obtained %t", expected, boolValue)
 	}
 }
 
 func TestGetAll(t *testing.T) {
-	propertyFile, err := New(fileName)
-	if err != nil {
-		t.Errorf("PropertyFile creation failed... %s", err.Error())
-	}
+	pFile := getNewFile()
 
 	const expectedSize = 2
-	subMap := propertyFile.GetAll("app.connections")
+	subMap := pFile.GetAll("app.connections")
 	if len(subMap) != expectedSize {
 		t.Errorf("Expected subMap size of %d. Obtained %d", expectedSize, len(subMap))
 	}
@@ -139,7 +130,7 @@ func TestGetAll(t *testing.T) {
 		urlKey     = "app.connections.url"
 	)
 
-	retriesConnProperty, _ := propertyFile.Get(retriesKey)
+	retriesConnProperty, _ := pFile.Get(retriesKey)
 	value, ok := subMap[retriesKey]
 	if !ok {
 		t.Errorf("Expected a property value %s but element not found in subMap", retriesConnProperty)
@@ -148,7 +139,7 @@ func TestGetAll(t *testing.T) {
 		t.Errorf("Expected a property value %s. Obtained %s", retriesConnProperty, value)
 	}
 
-	urlConnProperty, _ := propertyFile.Get(urlKey)
+	urlConnProperty, _ := pFile.Get(urlKey)
 	value, ok = subMap[urlKey]
 	if !ok {
 		t.Errorf("Expected a property value %s but element not found in subMap", urlConnProperty)
@@ -159,12 +150,9 @@ func TestGetAll(t *testing.T) {
 }
 
 func TestHasChanged(t *testing.T) {
-	propertyFile, err := New(fileName)
-	if err != nil {
-		t.Errorf("PropertyFile creation failed... %s", err.Error())
-	}
+	pFile := getNewFile()
 
-	if changed, _ := propertyFile.HasChanged(); changed != false {
+	if changed, _ := pFile.HasChanged(); changed != false {
 		t.Errorf("Expected a %t. Obtained %t", false, changed)
 	}
 
@@ -172,7 +160,40 @@ func TestHasChanged(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	changeFile("app.newline", "This is a new line")
 
-	if changed, _ := propertyFile.HasChanged(); changed != true {
+	if changed, _ := pFile.HasChanged(); changed != true {
 		t.Errorf("Expected a %t. Obtained %t", true, changed)
 	}
+}
+
+func TestRefresh(t *testing.T) {
+	pFile := getNewFile()
+	const propertyName = "app.changes"
+	const propertyValueExpected = "true"
+
+	// if property does not exist, return a error
+	if foundValue, err := pFile.Get(propertyName); err == nil {
+		t.Errorf("Expected 'Property not found' error and value ''. Obtained %s value", foundValue)
+	}
+
+	// add a new property
+	changeFile(propertyName, propertyValueExpected)
+
+	// refresh the file
+	if err := pFile.Refresh(); err != nil {
+		t.Errorf("An error has occurred... %s", err)
+	}
+
+	// if the file is refreshed correctly, now you should find the property
+	foundValue, err := pFile.Get(propertyName)
+	if err != nil {
+		t.Errorf("Expected %s value. Obtained error... %s", propertyValueExpected, err.Error())
+	}
+
+	if foundValue != propertyValueExpected {
+		t.Errorf("Expected %s value. Obtained %s", propertyValueExpected, foundValue)
+	}
+}
+
+func TestUGet(t *testing.T) {
+
 }

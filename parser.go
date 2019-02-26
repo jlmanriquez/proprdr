@@ -22,8 +22,8 @@ func parseFile(fileName string) (map[string]string, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// Is a comment line
-		if strings.HasPrefix(line, commentLine) {
+		// Is a comment line or a empty line
+		if strings.HasPrefix(line, commentLine) || len(strings.TrimSpace(line)) == 0 {
 			continue
 		}
 
