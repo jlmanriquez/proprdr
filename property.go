@@ -152,7 +152,7 @@ func (p *propFile) UGet(property string) (string, error) {
 	if err != nil {
 		value, gErr := p.Get(property)
 		if gErr != nil {
-			return "", err
+			return "", gErr
 		}
 
 		// it was not possible to obtain the updated value
