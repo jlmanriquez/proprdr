@@ -3,8 +3,10 @@ package proprdr
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -218,6 +220,67 @@ func TestRefresh(t *testing.T) {
 	}
 }
 
-func TestUGet(t *testing.T) {
+// changeProperty is used for update a one line and test UGet method
+func changeProperty(property, newValue string) {
+	readFile := func() []byte {
+		data, err := ioutil.ReadFile(unitTestFileName)
+		if err != nil {
+			log.Fatalf("An error has occurred reading file %s. Error... %s", unitTestFileName, err.Error())
+		}
+		return data
+	}
 
+	updateFile := func(data []byte) {
+		if err := ioutil.WriteFile(unitTestFileName, data, 0644); err != nil {
+			log.Fatalf("An error has ocurred updating file %s. Error... %s", unitTestFileName, err.Error())
+		}
+	}
+
+	data := readFile()
+	lines := strings.Split(string(data), "\n")
+
+	for i, l := range lines {
+		// found line to update
+		if strings.HasPrefix(l, property) {
+			lines[i] = property + "=" + newValue
+
+			outputLines := strings.Join(lines, "\n")
+			updateFile([]byte(outputLines))
+			return
+		}
+	}
+}
+
+func TestUGet(t *testing.T) {
+	// Get a originial PropertyFile, without changes
+	pFile := getNewFile()
+
+	const (
+		propertyName    = "app.name"
+		prevUpdateValue = "Property File Reader"
+		updatedValue    = "Property File Reader Updated"
+	)
+
+	changeProperty(propertyName, updatedValue)
+
+	// Creates a new ProperyFile with updated file to validate that the update was successful
+	updatedPropertyFile, err := New(unitTestFileName)
+	if err != nil {
+		t.Errorf("A new PropertyFile expected. Obtained error... %s", err.Error())
+	}
+
+	// Update is ok?
+	if value, _ := updatedPropertyFile.Get(propertyName); value != updatedValue {
+		t.Errorf("Expected %s value for property name %s. Obtained %s", updatedValue, propertyName, value)
+	}
+
+	// Validates that the original PropertyFile get old value...
+	if value, _ := pFile.Get(propertyName); value != prevUpdateValue {
+		t.Errorf("Expected %s value. Obtained %s value", prevUpdateValue, value)
+	}
+
+	// Validates that the original PropertyFile did the update
+	if value, _ := pFile.UGet(propertyName); value != updatedValue {
+		t.Errorf("Expected %s value. Obtained %s value", prevUpdateValue, value)
+	}
 }
